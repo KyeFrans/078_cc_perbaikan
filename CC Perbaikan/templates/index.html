@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Prediction with LSTM</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <h1>Stock Prediction with LSTM</h1>
+    <form id="prediction-form">
+      <input
+        type="text"
+        id="symbol"
+        name="symbol"
+        placeholder="Enter stock symbol"
+        required
+      />
+      <button type="submit">Predict</button>
+    </form>
+    <div id="result"></div>
+
+    <div class="section">
+      <h2>Visualization</h2>
+      <canvas id="stockChart"></canvas>
+    </div>
+
+    <div class="section">
+      <h2>Evaluation Metrics</h2>
+      <div id="metrics">
+        <div class="metric">
+          <div class="metric-name">MAE</div>
+          <div id="mae" class="metric-value"></div>
+        </div>
+        <div class="metric">
+          <div class="metric-name">MSE</div>
+          <div id="mse" class="metric-value"></div>
+        </div>
+        <div class="metric">
+          <div class="metric-name">RMSE</div>
+          <div id="rmse" class="metric-value"></div>
+        </div>
+        <div class="metric">
+          <div class="metric-name">MAPE</div>
+          <div id="mape" class="metric-value"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("prediction-form");
+      const result = document.getElementById("result");
+      const metrics = document.getElementById("metrics");
+      let chart;
+
+      function updateChart(data) {
+        if (chart) {
+          chart.destroy();
+        }
+
+        const ctx = document.getElementById("stockChart").getContext("2d");
+        chart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: data.dates,
+            datasets: [
+              {
+                label: "Actual Price",
+                data: data.actual_prices,
+                borderColor: "cyan",
+                fill: false,
+              },
+              {
+                label: "Predicted Price",
+                data: data.predicted_prices,
+                borderColor: "pink",
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            title: {
+              display: true,
+              text: "Stock Price: Actual vs Predicted",
+            },
+          },
+        });
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+
+        try {
+          const response = await fetch("/predict", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await response.json();
+
+          if (data.status === "success") {
+            result.innerHTML = `Prediction completed`;
+            metrics.innerHTML = `
+                        <p>Mean Absolute Error: ${data.mae}</p>
+                        <p>Mean Squared Error: ${data.mse}</p>
+                        <p>Root Mean Squared Error: ${data.rmse}</p>
+                        <p>Mean Absolute Percentage Error: ${data.mape}%</p>
+                    `;
+            updateChart(data);
+          } else {
+            result.innerHTML = `Error: ${data.message}`;
+            metrics.innerHTML = "";
+          }
+        } catch (error) {
+          result.innerHTML = `Error: ${error.message}`;
+          metrics.innerHTML = "";
+        }
+      });
+    </script>
+  </body>
+</html>
